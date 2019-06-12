@@ -5,13 +5,26 @@
 'use strict';
 
 const gulp = require('gulp');
+const concat = require('gulp-concat');
+const babel = require('gulp-babel');
 const nunjucks = require('gulp-nunjucks');
 const sass = require('gulp-sass');
+const sassGlob = require('gulp-sass-glob');
 const postcss = require('gulp-postcss');
 const del = require('del');
-// const autoprefixer = require('autoprefixer');
+const autoprefixer = require('autoprefixer');
+const webpackStream = require('webpack-stream');
+const named = require('vinyl-named');
 
 var browserSync = require('browser-sync');
+
+const sassConfigs = {
+  outputStyle: 'expanded',
+};
+
+const postcssPlugins = [
+  autoprefixer()
+];
 
 /** root for source codes */
 const srcRoot = './src';
@@ -21,9 +34,9 @@ const destRoot = './build';
 /** path definitions */
 const paths = {
   src: {
-    scripts: `${srcRoot}/scripts/**/*.js`,
+    scripts: `${srcRoot}/scripts/`,
     styles: `${srcRoot}/styles/**/*.scss`,
-    templates: `${srcRoot}/templates/**/*.html`,
+    templates: `${srcRoot}/templates/pages/*.html`,
     assets: `${srcRoot}/assets/**/*.{jpg, png, gif}`,
   },
   dest: {
@@ -33,8 +46,6 @@ const paths = {
     assets: `${destRoot}/assets/`,
   },
 };
-
-
 
 
 
@@ -64,18 +75,6 @@ function isDevelopment() {
 }
 
 
-/**
- * @name initServer
- * @function
- *   initializes the server
- * @param cb {function} a callback function
- *
- */
-function initServer(cb) {
-  browserSync = browserSync.create();
-
-  cb();
-}
 
 
 /**
@@ -86,19 +85,57 @@ function initServer(cb) {
  * @return a stream object
  */
 function compileStyles(cb) {
-  const sassConfigs = {
-    outputStyle: 'expanded',
-  };
+  let stream = gulp.src(paths.src.styles)
+      .pipe(sassGlob());
+
 
   if (isProduction()) {
     sassConfigs.outputStyle = 'compressed'
+
+    stream = stream
+      .pipe(sass(sassConfigs).on('error', sass.logError))
+      .pipe(postcss(postcssPlugins))
+      .pipe(gulp.dest(paths.dest.styles));
+  }
+  else if (!isProduction() && !isDevelopment()) {
+    stream = stream
+      .pipe(sass(sassConfigs).on('error', sass.logError))
+      .pipe(postcss(postcssPlugins))
+      .pipe(gulp.dest(paths.dest.styles))
+  }
+  else {
+    console.log('should stream changes')
+    stream = stream
+      .pipe(sass(sassConfigs).on('error', sass.logError))
+      .pipe(postcss(postcssPlugins))
+      .pipe(gulp.dest(paths.dest.styles))
+      .pipe(browserSync.stream());
   }
 
-  return gulp.src(paths.src.styles)
-    .pipe(sass(sassConfigs).on('error', sass.logError))
-    .pipe(gulp.dest(paths.dest.styles));
+
+  return stream;
 }
 
+function compileDependencyScripts(cb) {
+  return gulp.src(`${paths.src.scripts}dependencies/*.js`)
+    .pipe(concat('dependencies.js'))
+    .pipe(gulp.dest(paths.dest.scripts));
+}
+
+function compileComponentScripts(cb) {
+  // return gulp.src(`${srcRoot}/templates/**/*.js`)
+  return gulp.src(`${paths.src.scripts}bundle.js`)
+    .pipe(named())
+    .pipe(webpackStream())
+    .pipe(babel({
+      presets: [
+        ['@babel/env', {
+          modules: 'auto'
+        }]
+      ]
+    }))
+    .pipe(gulp.dest(paths.dest.scripts));
+}
 
 /**
  * @name compileScripts
@@ -108,7 +145,14 @@ function compileStyles(cb) {
  * @return
  */
 function compileScripts(cb) {
-  return gulp.src()
+  let tasks = gulp.series(
+    compileDependencyScripts,
+    compileComponentScripts
+  );
+  
+  return tasks;
+  // return gulp.src(paths.src.scripts)
+  //   .pipe(gulp.dest(paths.dest.scripts));
 }
 
 
@@ -121,44 +165,10 @@ function compileScripts(cb) {
  */
 function compileTemplates(cb) {
   return gulp.src(paths.src.templates)
+    .pipe(nunjucks.compile())
     .pipe(gulp.dest(paths.dest.templates));
 }
 
-
-/**
- * @name watchTemplates
- * @function 
- *   watch the changes happening for template files
- * @param cb {function} callback function
- * @return
- */
-function watchTemplates(cb) {
-  return gulp.src(paths.src.templates)
-}
-
-
-/**
- * @name watchStyles
- * @function 
- *   watch the changes happening for scss files
- * @param cb {function} callback function
- * @return
- */
-function watchStyles(cb) {
-  return gulp.src(paths.src.styles)
-}
-
-
-/**
- * @name watchScripts
- * @function 
- *   watch the changes happening for javascript files
- * @param cb {function} callback function
- * @return
- */
-function watchScripts(cb) {
-  return gulp.src(paths.src.scripts)
-}
 
 
 /**
@@ -172,6 +182,60 @@ function clean(cb) {
 }
 
 
+/**
+ * @name watch
+ * @function
+ *   watches the change
+ * @param cb {function} a callback function
+ *
+ */
+function watch(cb) {
+  browserSync = browserSync.create();
+  browserSync.init({
+    server: {
+      baseDir: './build',
+      directory: true,
+    },
+    ui: {
+      port: 9042,
+    },
+    open: true,
+    ghostMode:false,
+    port: 8042,
+  });
+  
+  gulp.watch(paths.src.styles, compileStyles);
+  gulp.watch(paths.dest.scripts).on('change', browserSync.reload);
+  gulp.watch(paths.dest.templates).on('change', browserSync.reload);
+
+  cb();
+}
+
+
+/**
+ * @name developTask
+ * @function
+ *   function defining the development task for gulp
+ * @return gulp task stream
+ */
+function developTask() {
+  let tasks;
+
+  process.env.NODE_ENV === 'development';
+
+  tasks = gulp.series(
+    clean, 
+    gulp.parallel(
+      compileTemplates, 
+      compileScripts,
+      compileStyles
+    ),
+    watch
+  );
+
+  return tasks;
+}
+
 
 /**
  * define gulp tasks
@@ -179,7 +243,11 @@ function clean(cb) {
 module.exports = {
   style: compileStyles,
   template: compileTemplates,
+  scripts: compileScripts(),
+  watch: watch,
   clean: clean,
+  develop: developTask(),
+  default: developTask(),
 }
 
 
