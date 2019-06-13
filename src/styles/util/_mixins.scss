@@ -1,0 +1,111 @@
+
+/**
+ * Mixin for centering element
+ */
+@mixin default-button($text-color:#000 ,$button-color:transparent ,$border-color:#000) {
+  padding: 12px 20px;
+  display: inline-block;
+  text-transform: uppercase;
+  color: $text-color;
+  cursor: pointer;
+  text-decoration: none;
+  background-color: $button-color;
+  border: 2px solid $border-color;
+  // transition: all 0.4s ease;
+
+  // &:hover,
+  // &:active {
+  //   background-color: $text-color;
+  //   color: $button-color;
+  // }
+}
+
+/**
+ * Mixin for centering element
+ */
+@mixin max-width-center($max: $site-width) {
+  max-width: $max;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@mixin limit-text-line($font-size: 12px, $line-height: 1.2, $lines-to-show: 2) {
+  display: -webkit-box;
+  font-size: $font-size;
+  line-height: $line-height;
+  height: $font-size * $line-height * $lines-to-show; 
+  -webkit-line-clamp: $lines-to-show;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/**
+ * No-select
+ * Disables selection/higlighting for element
+ */ 
+@mixin no-select() {
+  -webkit-touch-callout: none; 
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+@mixin btn-shadow-outline($shadow-args: 0px 0px 5px 0px rgba(0,0,0,0.45)){
+  outline: none;
+  &:active,&:focus {
+    box-shadow: $shadow-args
+  }
+}
+
+/**
+ * bleed-fullscreen
+ * to span an element exceeding parent width to fill the screen
+ */
+@mixin bleed-fullscreen() {
+  margin-left: -50vw;
+  margin-right: -50vw;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  z-index: $level-base;
+}
+
+/**
+ * Mixin handling breakpoint, mobile first
+ */
+@function breakpoint-min($name, $breakpoints: $grid-breakpoints) {
+  $min: map-get($breakpoints, $name);
+  @return if($min !=0, $min, null);
+}
+@mixin breakpoint-up($name, $breakpoints: $grid-breakpoints) {
+  $min: breakpoint-min($name, $breakpoints);
+  @if $min {
+    @media (min-width: $min) {
+      @content;
+    }
+  } @else {
+    @content;
+  }
+}
+
+/**
+ * Mixin handling breakpoint, desktop first
+ */
+@function breakpoint-max($name, $breakpoints: $grid-breakpoints) {
+  $max: map-get($breakpoints, $name);
+  @return if($max !=0, $max - 1px, null);
+}
+@mixin breakpoint-down($name, $breakpoints: $grid-breakpoints) {
+  $max: breakpoint-max($name, $breakpoints);
+  @if $max {
+    @media (max-width: $max) {
+      @content;
+    }
+  } @else {
+    @content;
+  }
+}

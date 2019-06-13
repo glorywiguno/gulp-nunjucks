@@ -1,0 +1,15 @@
+.component-1-list {
+  list-style-type: none;
+  display: flex;
+  flex-direction: row;
+  margin: 0;
+  padding: 20px;
+
+  li {
+    padding: 12px;
+    margin: 5px;
+    font-family: $font-default;
+    font-size: 12px;
+    border: 2px solid #333;
+  }
+}

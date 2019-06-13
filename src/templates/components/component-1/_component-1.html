@@ -1,0 +1,8 @@
+{% set items = ['gulp', 'nunjucks', 'webpack', 'babel', 'sass/scss', 'postcss'] %}
+
+<p>some things that made up this template:</p>
+<ul class="component-1-list">
+{% for item in items %}
+  <li>{{item}}</li>
+{% endfor %}
+</ul>

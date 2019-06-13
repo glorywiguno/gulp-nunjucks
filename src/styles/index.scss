@@ -1,9 +1,14 @@
-body {
-  font-family: sans-serif;
-  background: red;
+// Normalize style
+@import './vendors/normalize.scss';
 
-  h1 {
-    color: black;
-    font-style: italic;
-  }
-}
+// Imports for variables and mixins
+@import './util/variables.scss';
+@import './util/commons.scss';
+@import './util/mixins.scss';
+
+// Glob imports, not a native scss import, enabled by gulp-sass-glob plugin
+@import '../templates/pages/**/*.scss';
+@import '../templates/sections/**/*.scss';
+@import '../templates/components/**/*.scss';
+
+

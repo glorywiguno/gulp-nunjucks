@@ -1,9 +1,7 @@
-{% extends "layout/base.html" %}
+{% extends "layout/base-layout.html" %}
 
 {% block content%}
   <h1>Hello world!</h1>
-  {% for i in range(0, 9) %}
-  <p>let's see if this works</p>
-  {% endfor %}
-
+  {% include 'components/component-1/_component-1.html'%}
+  {% include 'components/component-2/_component-2.html'%}
 {% endblock %}

@@ -1,0 +1,43 @@
+
+/**
+ * Global variables
+ */
+
+// Break points
+$grid-breakpoints: (
+  zero: 0,
+  xsmall: 320px,
+  small: 576px,
+  medium: 768px,
+  large: 992px,
+  mLarge: 1024px,
+  xlarge: 1200px,
+);
+
+$site-width: 1300px;
+
+// Colors
+$font-default: 'Arial', 'Helvetica', sans-serif;
+$icon-material: "Material-Design-Iconic-Font";
+$icon-fa-free: "Font Awesome 5 Free";
+$icon-fa-brands: "Font Awesome 5 Brands";
+
+$default-font-size: 12px;
+$default-line-height: 1.3em;
+
+// Z index levels
+$level-base: 0;
+$level-middle: 100;
+$level-top: 200;
+$level-cover: 500;
+
+// Mobile styling
+$padding-mobile: 22px;
+
+// transition easing
+$easeInOutQuad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+$easeOutCirc: cubic-bezier(0.075, 0.82, 0.165, 1);
+$easeInQuad: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+
+
+
