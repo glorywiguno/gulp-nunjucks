@@ -11,17 +11,32 @@ const nunjucks = require('gulp-nunjucks');
 const sass = require('gulp-sass');
 const sassGlob = require('gulp-sass-glob');
 const postcss = require('gulp-postcss');
-const del = require('del');
-const autoprefixer = require('autoprefixer');
 const webpackStream = require('webpack-stream');
 const named = require('vinyl-named');
+const plumber = require('gulp-plumber');
 
+const nunjucksCore = require('nunjucks');
+const del = require('del');
+const autoprefixer = require('autoprefixer');
 var browserSync = require('browser-sync');
 
+// to specify where nunjucks should get the template
+// https://mozilla.github.io/nunjucks/api.html#loader
+const nunjucksEnv = new nunjucksCore.Environment(new nunjucksCore.FileSystemLoader('src/templates'));
+
+/** nunjucks options */
+const nunjucksOptions = {
+  env: nunjucksEnv,
+  // custom nunjuck filters should go here
+  filters: {}
+}
+
+/** sass configurations */
 const sassConfigs = {
   outputStyle: 'expanded',
 };
 
+/** postcss plugins */
 const postcssPlugins = [
   autoprefixer()
 ];
@@ -86,6 +101,7 @@ function isDevelopment() {
  */
 function compileStyles(cb) {
   let stream = gulp.src(paths.src.styles)
+      .pipe(plumber())
       .pipe(sassGlob());
 
 
@@ -116,17 +132,27 @@ function compileStyles(cb) {
   return stream;
 }
 
-function compileDependencyScripts(cb) {
-  return gulp.src(`${paths.src.scripts}dependencies/*.js`)
-    .pipe(concat('dependencies.js'))
+function compileVendorsScripts(cb) {
+  return gulp.src(`${paths.src.scripts}vendors/*.js`)
+    .pipe(plumber())
+    .pipe(concat('vendors.js'))
     .pipe(gulp.dest(paths.dest.scripts));
 }
 
+
 function compileComponentScripts(cb) {
-  // return gulp.src(`${srcRoot}/templates/**/*.js`)
+  let webpackConfig;
+  if (isProduction()) {
+    webpackConfig = require('./webpack/config.production.js');
+  }
+  else {
+    webpackConfig = require('./webpack/config.development.js');
+  }
+
   return gulp.src(`${paths.src.scripts}bundle.js`)
+    .pipe(plumber())
     .pipe(named())
-    .pipe(webpackStream())
+    .pipe(webpackStream(webpackConfig))
     .pipe(babel({
       presets: [
         ['@babel/env', {
@@ -137,22 +163,21 @@ function compileComponentScripts(cb) {
     .pipe(gulp.dest(paths.dest.scripts));
 }
 
+
 /**
  * @name compileScripts
- * @function 
+ * @function
  *   compile javascript file
  * @param cb {function} callback function
  * @return
  */
-function compileScripts(cb) {
+function compileScripts() {
   let tasks = gulp.series(
-    compileDependencyScripts,
+    compileVendorsScripts,
     compileComponentScripts
   );
-  
+
   return tasks;
-  // return gulp.src(paths.src.scripts)
-  //   .pipe(gulp.dest(paths.dest.scripts));
 }
 
 
@@ -165,7 +190,8 @@ function compileScripts(cb) {
  */
 function compileTemplates(cb) {
   return gulp.src(paths.src.templates)
-    .pipe(nunjucks.compile())
+    .pipe(plumber())
+    .pipe(nunjucks.compile(null, nunjucksOptions))
     .pipe(gulp.dest(paths.dest.templates));
 }
 
@@ -203,10 +229,15 @@ function watch(cb) {
     ghostMode:false,
     port: 8042,
   });
-  
+
+  // watch styles
   gulp.watch(paths.src.styles, compileStyles);
-  gulp.watch(paths.dest.scripts).on('change', browserSync.reload);
-  gulp.watch(paths.dest.templates).on('change', browserSync.reload);
+  // watch scripts
+  gulp.watch(`${paths.src.scripts}vendors`, compileVendorsScripts).on('change', browserSync.reload);
+  gulp.watch(`${srcRoot}/templates/**/*.js`, compileComponentScripts).on('change', browserSync.reload);
+  gulp.watch(`${paths.src.scripts}*.js`, compileComponentScripts).on('change', browserSync.reload);
+  // watch templates
+  gulp.watch(paths.src.templates, compileTemplates).on('change', browserSync.reload);
 
   cb();
 }
@@ -221,16 +252,33 @@ function watch(cb) {
 function developTask() {
   let tasks;
 
-  process.env.NODE_ENV === 'development';
+  process.env.NODE_ENV = 'development';
 
   tasks = gulp.series(
-    clean, 
+    clean,
     gulp.parallel(
-      compileTemplates, 
-      compileScripts,
+      compileTemplates,
+      compileScripts(),
       compileStyles
     ),
     watch
+  );
+
+  return tasks;
+}
+
+function buildTask() {
+  let tasks;
+
+  process.env.NODE_ENV = 'production';
+
+  tasks = gulp.series(
+    clean,
+    gulp.parallel(
+      compileTemplates,
+      compileScripts(),
+      compileStyles
+    )
   );
 
   return tasks;
@@ -248,6 +296,7 @@ module.exports = {
   clean: clean,
   develop: developTask(),
   default: developTask(),
+  build: buildTask(),
 }
 
 
